@@ -158,6 +158,252 @@ class LaporanController extends Controller
         ]);
     }
 
+    // GET /api/laporan/dead-stock
+    public function getDeadStock(Request $request)
+    {
+        $user = $request->user();
+        $periode = $request->get('periode', 'bulanan');
+        $tanggal = $request->get('tanggal', now()->toDateString());
+        $limit = (int) $request->get('limit', 20);
+
+        $date = Carbon::parse($tanggal);
+        $startDate = $this->getStartDate($periode, $date);
+        $endDate = $this->getEndDate($periode, $date);
+
+        // 1. Ambil semua produk penjual
+        $allProduk = Produk::where('penjual_id', $user->penjual_id)
+            ->with('kategori', 'gambarProduk')
+            ->get();
+
+        // 2. Ambil ID produk yang terjual dalam periode
+        $terjualIds = DetailTransaksi::query()
+            ->join('transaksi', 'detail_transaksi.transaksi_id', '=', 'transaksi.transaksi_id')
+            ->where('transaksi.penjual_id', $user->penjual_id)
+            ->where('transaksi.status', 'selesai')
+            ->whereBetween('transaksi.tanggal_transaksi', [$startDate, $endDate])
+            ->distinct('produk_id')
+            ->pluck('produk_id')
+            ->toArray();
+
+        // 3. Filter: produk yang TIDAK terjual
+        $deadStock = $allProduk->filter(function ($produk) use ($terjualIds) {
+            return !in_array($produk->produk_id, $terjualIds);
+        });
+
+        // 4. Format data
+        $data = $deadStock->map(function ($produk) {
+            $ukuranStok = $this->parseUkuranStok($produk->ukuran_stok);
+            $totalStok = $this->getTotalStok($ukuranStok, $produk->stok);
+            $daysSinceLastSale = $produk->updated_at
+                ? (int) Carbon::parse($produk->updated_at)->diffInDays(now())
+                : 999;
+
+            // Rekomendasi berdasarkan durasi
+            if ($daysSinceLastSale > 60) {
+                $rekomendasi = '🔴 Diskon besar atau bundling dengan produk lain';
+            } elseif ($daysSinceLastSale > 30) {
+                $rekomendasi = '🟡 Promosi atau bundling dengan produk laris';
+            } elseif ($daysSinceLastSale > 14) {
+                $rekomendasi = '🟢 Perhatikan tren, mungkin perlu evaluasi';
+            } else {
+                $rekomendasi = '✅ Masih dalam periode wajar';
+            }
+
+            return [
+                'produk_id' => (int) $produk->produk_id,
+                'nama_produk' => $produk->nama_produk,
+                'harga' => (int) $produk->harga,
+                'stok_saat_ini' => $totalStok,
+                'min_stok' => (int) ($produk->min_stok ?? 10),
+                'ukuran_stok' => $ukuranStok,
+                'gambar' => $produk->gambarProduk->isNotEmpty()
+                    ? $produk->gambarProduk->first()->gambar
+                    : '',
+                'kategori' => $produk->kategori?->nama_kategori ?? '',
+                'terakhir_terjual' => $produk->updated_at
+                    ? $produk->updated_at->format('Y-m-d')
+                    : 'Tidak pernah',
+                'hari_tanpa_penjualan' => $daysSinceLastSale,
+                'total_biaya' => $totalStok * $produk->harga,
+                'rekomendasi' => $rekomendasi,
+            ];
+        })
+        ->sortByDesc('hari_tanpa_penjualan')
+        ->take($limit)
+        ->values();
+
+        return response()->json([
+            'success' => true,
+            'periode' => $periode,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+            'data' => $data,
+        ]);
+    }
+
+    // Helper: parse ukuran_stok JSON
+    private function parseUkuranStok($ukuranStok)
+    {
+        if (is_string($ukuranStok)) {
+            $ukuranStok = json_decode($ukuranStok, true);
+        }
+        return is_array($ukuranStok) ? $ukuranStok : [];
+    }
+
+    // Helper: hitung total stok dari ukuran_stok atau stok
+    private function getTotalStok(array $ukuranStok, $stokGlobal)
+    {
+        if (!empty($ukuranStok)) {
+            $total = 0;
+            foreach ($ukuranStok as $uk) {
+                $total += (int) ($uk['stock'] ?? 0);
+            }
+            return $total > 0 ? $total : (int) $stokGlobal;
+        }
+        return (int) $stokGlobal;
+    }
+
+    // Helper: get start date
+    private function getStartDate($periode, Carbon $date)
+    {
+        switch ($periode) {
+            case 'harian':
+                return $date->copy()->startOfDay();
+            case 'mingguan':
+                return $date->copy()->startOfWeek(Carbon::MONDAY);
+            case 'bulanan':
+                return $date->copy()->startOfMonth();
+            default:
+                return $date->copy()->startOfMonth();
+        }
+    }
+
+    // Helper: get end date
+    private function getEndDate($periode, Carbon $date)
+    {
+        switch ($periode) {
+            case 'harian':
+                return $date->copy()->endOfDay();
+            case 'mingguan':
+                return $date->copy()->endOfWeek(Carbon::SUNDAY);
+            case 'bulanan':
+                return $date->copy()->endOfMonth();
+            default:
+                return $date->copy()->endOfMonth();
+        }
+    }
+
+    private function getPeriodeLabel($periode, $days)
+    {
+        switch ($periode) {
+            case 'harian':
+                return 'Hari Ini';
+            case 'mingguan':
+                return 'Minggu Ini (7 hari)';
+            case 'bulanan':
+                return 'Bulan Ini (' . $days . ' hari)';
+            default:
+                return 'Periode';
+        }
+    }
+
+    public function getFastMovingSku(Request $request)
+    {
+        $user = $request->user();
+        $periode = $request->get('periode', 'bulanan');
+        $tanggal = $request->get('tanggal', now()->toDateString());
+        $limit = (int) $request->get('limit', 15); 
+        $threshold = (int) $request->get('threshold', 2);
+        
+        $date = Carbon::parse($tanggal);
+        $startDate = $this->getStartDate($periode, $date);
+        $endDate = $this->getEndDate($periode, $date);
+        $days = $startDate->diffInDays($endDate) + 1;
+
+        $query = DetailTransaksi::query()
+        ->join('transaksi', 'detail_transaksi.transaksi_id', '=', 'transaksi.transaksi_id')
+        ->join('produk', 'detail_transaksi.produk_id', '=', 'produk.produk_id')
+        ->leftJoin('gambar_produk', function ($join) {
+            $join->on('produk.produk_id', '=', 'gambar_produk.produk_id')
+                ->where('gambar_produk.urutan', 0);
+            })
+                ->where('transaksi.penjual_id', $user->penjual_id)
+                ->where('transaksi.status', 'selesai')
+                ->whereBetween('transaksi.tanggal_transaksi', [$startDate, $endDate]);
+                
+                $results = $query
+                ->select(
+                    'produk.produk_id',
+                    'produk.nama_produk',
+                    'produk.harga',
+                    'produk.stok',
+                    'produk.min_stok',
+                    'produk.ukuran_stok',
+                    'gambar_produk.gambar as gambar',
+                    DB::raw('SUM(detail_transaksi.jumlah) as total_terjual'),
+                    DB::raw('COUNT(DISTINCT transaksi.transaksi_id) as jumlah_transaksi'),
+                    DB::raw('SUM(detail_transaksi.jumlah) / ' . $days . ' as rata_per_hari')
+                )
+                
+                ->groupBy(
+                    'produk.produk_id',
+                    'produk.nama_produk',
+                    'produk.harga',
+                    'produk.stok',
+                    'produk.min_stok',
+                    'produk.ukuran_stok',
+                    'gambar_produk.gambar'
+                )
+                
+                ->having('rata_per_hari', '>=', $threshold)
+                ->orderBy('rata_per_hari', 'desc')
+                ->limit($limit)
+                ->get();
+
+    $data = $results->map(function ($item) use ($days, $periode) {
+        $ukuranStok = $this->parseUkuranStok($item->ukuran_stok);
+        $totalStok = $this->getTotalStok($ukuranStok, $item->stok);
+        $rataPerHari = round($item->rata_per_hari, 2);
+        $estimasiHabis = $rataPerHari > 0 ? round($totalStok / $rataPerHari) : 999;
+
+        if ($estimasiHabis <= 3) {
+            $status = 'kritis';
+        } elseif ($estimasiHabis <= 7) {
+            $status = 'perlu_diperhatikan';
+        } elseif ($rataPerHari >= 5) {
+            $status = 'fast_moving';
+        } else {
+            $status = 'aman';
+        }
+
+        return [
+            'produk_id' => (int) $item->produk_id,
+            'nama_produk' => $item->nama_produk,
+            'harga' => (int) $item->harga,
+            'stok_saat_ini' => $totalStok,
+            'min_stok' => (int) ($item->min_stok ?? 10),
+            'total_terjual' => (int) $item->total_terjual,
+            'jumlah_transaksi' => (int) $item->jumlah_transaksi,
+            'rata_per_hari' => $rataPerHari,
+            'estimasi_habis' => $estimasiHabis,
+            'status' => $status,
+            'ukuran_stok' => $ukuranStok,
+            'gambar' => $item->gambar,
+            'rekomendasi_restock' => max(0, (int) round(($rataPerHari * 7) - $totalStok)),
+            'periode_label' => $this->getPeriodeLabel($periode, $days),
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'periode' => $periode,
+        'start_date' => $startDate->format('Y-m-d'),
+        'end_date' => $endDate->format('Y-m-d'),
+        'days' => $days,
+        'data' => $data,
+    ]);
+}
+
     private function getPenjualanHarian($penjualId, $tanggal)
     {
         $date = Carbon::parse($tanggal);

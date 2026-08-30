@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "409864595817",
+    "project_id": "sibu-518b4",
+    "storage_bucket": "sibu-518b4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:409864595817:android:a6e4b24288d10bb724f5f8",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwtffp8jpXSm7fQgZFHW26gZn2-QSPdcQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

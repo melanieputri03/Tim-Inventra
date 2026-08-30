@@ -54,5 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/produk-terlaris', [LaporanController::class, 'getProdukTerlaris']);
         Route::get('/penjualan/tahunan', [LaporanController::class, 'getPenjualanTahunan']);
         Route::get('/produk-terlaris/tahunan', [LaporanController::class, 'getProdukTerlarisTahunan']);
+        Route::get('/fast-moving-sku', [LaporanController::class, 'getFastMovingSku']);
+        Route::get('/dead-stock', [LaporanController::class, 'getDeadStock']);
     });
 });

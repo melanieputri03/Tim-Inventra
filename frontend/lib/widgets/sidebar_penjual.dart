@@ -10,7 +10,8 @@ import '../penjual/manajemen_periode_screen.dart';
 import '../penjual/laporan_penjualan.dart';
 import '../penjual/notifikasi_penjual.dart';      
 import '../penjual/rekomendasi_stok.dart';        
-import '../penjual/profil_penjual.dart';          
+import '../penjual/profil_penjual.dart';   
+import '../penjual/analisis_produk.dart';       
 
 class SidebarWidget extends StatefulWidget {
   final String userName;
@@ -147,6 +148,18 @@ class _SidebarWidgetState extends State<SidebarWidget> {
       MaterialPageRoute(
         builder: (context) => const NotifikasiPenjual(),
       ),
+    );
+  }
+
+  void _navigateToAnalisisProduk(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AnalisisProduk(
+          userName: userName,
+          userEmail: userEmail,
+          ),
+        ),
     );
   }
 
@@ -319,9 +332,17 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   
                   _buildMenuItem(
                     context: context,
+                    icon: Icons.analytics_outlined,
+                    title: 'Analisis Produk',
+                    index: 6,
+                    onTap: () => _navigateToAnalisisProduk(context),
+                  ),
+
+                  _buildMenuItem(
+                    context: context,
                     icon: Icons.notifications_none_outlined,
                     title: 'Notifikasi',
-                    index: 6,
+                    index: 7,
                     onTap: () => _navigateToNotifikasi(context),
                   ),
                   
@@ -329,7 +350,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     context: context,
                     icon: Icons.person_outline,
                     title: 'Profil',
-                    index: 7,
+                    index: 8,
                     onTap: () => _navigateToProfil(context),
                   ),
                   

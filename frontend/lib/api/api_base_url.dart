@@ -70,6 +70,10 @@ class ApiBaseUrl {
   static String get konfirmasiTiba =>
       '$baseUrl/rekomendasi-stok/konfirmasi-tiba';
 
+  // Fast Moving SKU dan Dead Stock
+  static String get laporanFastMovingSku => '$baseUrl/laporan/fast-moving-sku';
+  static String get laporanDeadStock => '$baseUrl/laporan/dead-stock';
+
   // Gambar produk
   static String getImageUrl(dynamic path) {
     if (path == null) return '';
