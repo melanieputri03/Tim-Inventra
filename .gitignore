@@ -28,3 +28,8 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+
+# Firebase config
+google-services.json
+google-services*.json
+frontend/android/app/google-services (2)*.json
