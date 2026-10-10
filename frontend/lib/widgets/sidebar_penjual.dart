@@ -11,7 +11,8 @@ import '../penjual/laporan_penjualan.dart';
 import '../penjual/notifikasi_penjual.dart';      
 import '../penjual/rekomendasi_stok.dart';        
 import '../penjual/profil_penjual.dart';   
-import '../penjual/analisis_produk.dart';       
+import '../penjual/analisis_produk.dart';   
+import '../penjual/paket_langganan.dart';    
 
 class SidebarWidget extends StatefulWidget {
   final String userName;
@@ -190,6 +191,18 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     );
   }
 
+  void _navigateToPaketLangganan(BuildContext context) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => PaketLangganan(
+        userName: userName,
+        userEmail: userEmail,
+      ),
+    ),
+  );
+}
+
   void _navigateToProfil(BuildContext context) {
     Navigator.push(
       context,
@@ -345,12 +358,20 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     index: 7,
                     onTap: () => _navigateToNotifikasi(context),
                   ),
+
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.stars_outlined,
+                    title: 'Paket Langganan',
+                    index: 8,
+                    onTap: () => _navigateToPaketLangganan(context),
+                  ),
                   
                   _buildMenuItem(
                     context: context,
                     icon: Icons.person_outline,
                     title: 'Profil',
-                    index: 8,
+                    index: 9,
                     onTap: () => _navigateToProfil(context),
                   ),
                   

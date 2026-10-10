@@ -29,6 +29,8 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
   late TextEditingController _deskripsiController;
   late TextEditingController _minStokController;
   final TextEditingController _stockPerSizeController = TextEditingController();
+  // ⭐ TAMBAH CONTROLLER WARNA
+  final TextEditingController _warnaController = TextEditingController();
 
   // Data Kategori API
   List<Map<String, dynamic>> _kategoriList = [];
@@ -58,6 +60,27 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
   // State
   bool _isLoading = false;
   String? _token;
+
+  // ⭐ HELPER WARNA
+  Color _getWarnaColor(String warna) {
+    switch (warna.toLowerCase()) {
+      case 'merah': return Colors.red;
+      case 'biru': return Colors.blue;
+      case 'hijau': return Colors.green;
+      case 'kuning': return Colors.yellow;
+      case 'putih': return Colors.white;
+      case 'hitam': return Colors.black;
+      case 'pink': return Colors.pink;
+      case 'ungu': return Colors.purple;
+      case 'cokelat': return Colors.brown;
+      case 'abu': 
+      case 'abu-abu': return Colors.grey;
+      case 'navy': return Colors.blue.shade900;
+      case 'krem': return const Color(0xFFF5F5DC);
+      case 'gold': return const Color(0xFFFFD700);
+      default: return Colors.grey.shade400;
+    }
+  }
 
   @override
   void initState() {
@@ -120,13 +143,18 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
     }
   }
 
-  // TAMBAH UKURAN & STOK
+  // ⭐ TAMBAH UKURAN & STOK (DENGAN WARNA)
   void _addSizeStock() {
     String size = _selectedUkuran ?? '';
+    String warna = _warnaController.text.trim();
     String stockStr = _stockPerSizeController.text.trim();
 
     if (size.isEmpty) {
       _showSnackbar('Pilih ukuran terlebih dahulu!', Colors.orange);
+      return;
+    }
+    if (warna.isEmpty) {
+      _showSnackbar('Masukkan warna!', Colors.orange);
       return;
     }
     if (stockStr.isEmpty) {
@@ -139,13 +167,24 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
       _showSnackbar('Stok harus lebih dari 0!', Colors.orange);
       return;
     }
-    if (_sizeStockList.any((item) => item['size'] == size)) {
-      _showSnackbar('Ukuran "$size" sudah ada!', Colors.red);
+
+    // Cek kombinasi size+warna sudah ada
+    bool exists = _sizeStockList.any((item) => 
+      item['size'] == size && item['warna'] == warna
+    );
+    if (exists) {
+      _showSnackbar('Ukuran "$size" warna "$warna" sudah ada!', Colors.red);
       return;
     }
 
     setState(() {
-      _sizeStockList.add({'size': size, 'stock': stock});
+      // ⭐ SIMPAN DENGAN FORMAT BARU (size + warna + stock)
+      _sizeStockList.add({
+        'size': size,
+        'warna': warna,
+        'stock': stock,
+      });
+      _warnaController.clear();
       _stockPerSizeController.clear();
       _selectedUkuran = null;
     });
@@ -265,7 +304,7 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
   Future<void> _simpanPerubahan() async {
     if (!_formKey.currentState!.validate()) return;
     if (_sizeStockList.isEmpty) {
-      _showSnackbar('Tambahkan minimal 1 ukuran dan stok!', Colors.orange);
+      _showSnackbar('Tambahkan minimal 1 ukuran, warna, dan stok!', Colors.orange);
       return;
     }
     if (_selectedKategoriId == null) {
@@ -741,7 +780,7 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
 
                     const SizedBox(height: 24),
 
-                    // UKURAN & STOK
+                    // UKURAN, WARNA & STOK
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(color: const Color(0xFFF5ECEA), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFD8A5A8), width: 1)),
@@ -752,10 +791,12 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                             children: [
                               const Icon(Icons.label_outline, color: Color(0xFF803033), size: 20),
                               const SizedBox(width: 8),
-                              Text('UKURAN & STOK', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF803033))),
+                              Text('UKURAN, WARNA & STOK', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF803033))),
                             ],
                           ),
                           const SizedBox(height: 12),
+                          
+                          // Row: Ukuran dropdown + Stok input
                           Row(
                             children: [
                               Expanded(
@@ -793,22 +834,89 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                               ),
                             ],
                           ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // ⭐ TAMBAH INPUT WARNA
+                          Text(
+                            'Warna',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: TextField(
+                              controller: _warnaController,
+                              decoration: InputDecoration(
+                                hintText: 'Contoh: Merah, Biru, Pink, Hitam',
+                                hintStyle: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade400,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.palette_outlined,
+                                  color: Color(0xFF803033),
+                                  size: 20,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          
                           const SizedBox(height: 16),
+                          
+                          // ⭐ DAFTAR VARIAN (DENGAN WARNA)
                           if (_sizeStockList.isNotEmpty) ...[
                             const Divider(),
                             const SizedBox(height: 8),
-                            Text('Daftar Ukuran & Stok:', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                            Text('Daftar Varian:', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                             const SizedBox(height: 8),
                             ..._sizeStockList.asMap().entries.map((entry) {
                               int index = entry.key;
                               var item = entry.value;
+                              String warna = item['warna'] ?? '';
+                              Color warnaColor = _getWarnaColor(warna);
+                              
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFD8A5A8), width: 1)),
                                 child: Row(
                                   children: [
-                                    Expanded(flex: 2, child: Text('Ukuran: ${item['size']}', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600))),
+                                    // 🎨 Indikator warna
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: warnaColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.grey.shade300, width: 1),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    // Ukuran + Warna
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        '${item['size']} | ${item['warna'] ?? '-'}',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    // Stok
                                     Expanded(
                                       flex: 1,
                                       child: Row(
@@ -901,6 +1009,7 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
     _deskripsiController.dispose();
     _minStokController.dispose();
     _stockPerSizeController.dispose();
+    _warnaController.dispose();
     super.dispose();
   }
 }

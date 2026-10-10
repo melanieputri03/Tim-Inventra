@@ -28,10 +28,9 @@ class ProdukScreen extends StatefulWidget {
 
 class _ProdukScreenState extends State<ProdukScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  int _selectedIndex = 1;
+  final int _selectedIndex = 1;
   final TextEditingController _searchController = TextEditingController();
 
-  // Filter kategori
   String _selectedCategory = 'Semua';
   String _selectedStatus = 'Semua';
   final List<String> _categories = [
@@ -44,14 +43,12 @@ class _ProdukScreenState extends State<ProdukScreen> {
   ];
   final List<String> _statusOptions = ['Semua', 'Stok Rendah'];
 
-  // Data produk API
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _filteredProducts = [];
   bool _isLoading = true;
   String? _token;
   int _belumDibaca = 0;
 
-  // Helper functions
   String _safeString(dynamic value) => ApiBaseUrl.safeString(value);
 
   int _safeInt(dynamic value, {int defaultValue = 0}) {
@@ -62,6 +59,27 @@ class _ProdukScreenState extends State<ProdukScreen> {
   }
 
   List _safeList(dynamic value) => ApiBaseUrl.safeList(value);
+
+  // ⭐ HELPER WARNA UNTUK BADGE
+  Color _getWarnaColor(String warna) {
+    switch (warna.toLowerCase()) {
+      case 'merah': return Colors.red;
+      case 'biru': return Colors.blue;
+      case 'hijau': return Colors.green;
+      case 'kuning': return Colors.yellow;
+      case 'putih': return Colors.white;
+      case 'hitam': return Colors.black;
+      case 'pink': return Colors.pink;
+      case 'ungu': return Colors.purple;
+      case 'cokelat': return Colors.brown;
+      case 'abu':
+      case 'abu-abu': return Colors.grey;
+      case 'navy': return Colors.blue.shade900;
+      case 'krem': return const Color(0xFFF5F5DC);
+      case 'gold': return const Color(0xFFFFD700);
+      default: return Colors.grey.shade400;
+    }
+  }
 
   @override
   void initState() {
@@ -132,10 +150,14 @@ class _ProdukScreenState extends State<ProdukScreen> {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           final List listNotif = data['data'] ?? [];
-          // Menghitung jumlah data notifikasi yang belum dibaca
-          final unread = listNotif.where((n) => 
-            n['sudah_dibaca'] == false || n['sudah_dibaca'] == 0 || n['sudah_dibaca'] == '0'
-          ).length;
+          final unread = listNotif
+              .where(
+                (n) =>
+                    n['sudah_dibaca'] == false ||
+                    n['sudah_dibaca'] == 0 ||
+                    n['sudah_dibaca'] == '0',
+              )
+              .length;
 
           setState(() {
             _belumDibaca = unread;
@@ -220,16 +242,15 @@ class _ProdukScreenState extends State<ProdukScreen> {
         final namaProduk = _safeString(product['nama_produk']).toLowerCase();
         final kategori = _safeString(product['kategori']).toLowerCase();
 
-        // Filter pencarian
-        final matchesSearch = query.isEmpty ||
+        final matchesSearch =
+            query.isEmpty ||
             namaProduk.contains(query.toLowerCase()) ||
             kategori.contains(query.toLowerCase());
 
-        // Filter kategori
-        final matchesCategory = _selectedCategory == 'Semua' ||
+        final matchesCategory =
+            _selectedCategory == 'Semua' ||
             kategori == _selectedCategory.toLowerCase();
 
-        // Filter status stok rendah
         bool matchesStatus = true;
         if (_selectedStatus == 'Stok Rendah') {
           final totalStock = _getTotalStock(product);
@@ -282,7 +303,9 @@ class _ProdukScreenState extends State<ProdukScreen> {
                     selected: isSelected,
                     onSelected: (_) => _filterByCategory(category),
                     backgroundColor: Colors.grey.shade100,
-                    selectedColor: const Color(0xFF803033).withOpacity(0.2),
+                    selectedColor: const Color(
+                      0xFF803033,
+                    ).withValues(alpha: 0.2),
                     labelStyle: GoogleFonts.plusJakartaSans(
                       color: isSelected
                           ? const Color(0xFF803033)
@@ -344,7 +367,9 @@ class _ProdukScreenState extends State<ProdukScreen> {
                       Navigator.pop(context);
                     },
                     backgroundColor: Colors.grey.shade100,
-                    selectedColor: const Color(0xFF803033).withOpacity(0.2),
+                    selectedColor: const Color(
+                      0xFF803033,
+                    ).withValues(alpha: 0.2),
                     labelStyle: GoogleFonts.plusJakartaSans(
                       color: isSelected
                           ? const Color(0xFF803033)
@@ -370,10 +395,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
 
   // ==================== HELPER ====================
   String formatPrice(int price) {
-    return 'Rp ${price.toString().replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]}.',
-    )}';
+    return 'Rp ${price.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}';
   }
 
   int _getTotalStock(Map<String, dynamic> product) {
@@ -413,9 +435,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 0,
         backgroundColor: Colors.transparent,
         child: Container(
@@ -520,9 +540,8 @@ class _ProdukScreenState extends State<ProdukScreen> {
                                     '${_safeString(product['nama_produk'])} telah dihapus',
                               );
                             } else {
-                              final pesanError = _safeString(
-                                resBody['message'],
-                              ).isNotEmpty
+                              final pesanError =
+                                  _safeString(resBody['message']).isNotEmpty
                                   ? _safeString(resBody['message'])
                                   : 'Gagal menghapus produk';
                               _showResultDialog(
@@ -566,20 +585,19 @@ class _ProdukScreenState extends State<ProdukScreen> {
     );
   }
 
-  // Popup hasil aksi (sukses/gagal) — gaya konsisten dengan dialog konfirmasi
   void _showResultDialog({required bool success, required String message}) {
-    final Color mainColor =
-        success ? const Color(0xFF2E7D32) : const Color(0xFF803033);
-    final Color bgIconColor =
-        success ? const Color(0xFFE8F5E9) : const Color(0xFFF5ECEA);
+    final Color mainColor = success
+        ? const Color(0xFF2E7D32)
+        : const Color(0xFF803033);
+    final Color bgIconColor = success
+        ? const Color(0xFFE8F5E9)
+        : const Color(0xFFF5ECEA);
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 0,
         backgroundColor: Colors.transparent,
         child: Container(
@@ -658,10 +676,6 @@ class _ProdukScreenState extends State<ProdukScreen> {
     final String gambar = _safeString(product['gambar']);
     final String imageUrl = ApiBaseUrl.getImageUrl(gambar);
 
-    if (kIsWeb && imageUrl.isNotEmpty) {
-      print('Loading image: $imageUrl');
-    }
-
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         topLeft: Radius.circular(15),
@@ -692,14 +706,13 @@ class _ProdukScreenState extends State<ProdukScreen> {
                 );
               },
               errorBuilder: (context, error, stackTrace) {
-                print('Error loading image: $imageUrl - $error');
                 return Container(
                   height: 120,
                   width: double.infinity,
                   color: const Color(0xFFF5ECEA),
                   child: Icon(
                     Icons.broken_image,
-                    color: const Color(0xFF803033).withOpacity(0.4),
+                    color: const Color(0xFF803033).withValues(alpha: 0.4),
                     size: 50,
                   ),
                 );
@@ -711,18 +724,41 @@ class _ProdukScreenState extends State<ProdukScreen> {
               color: const Color(0xFFF5ECEA),
               child: Icon(
                 Icons.shopping_bag_outlined,
-                color: const Color(0xFF803033).withOpacity(0.4),
+                color: const Color(0xFF803033).withValues(alpha: 0.4),
                 size: 50,
               ),
             ),
     );
   }
 
+  // ⭐⭐⭐ BUILD PRODUCT CARD DENGAN VARIAN LENGKAP ⭐⭐⭐
   Widget _buildProductCard(Map<String, dynamic> product) {
     final bool isLowStock = _isLowStock(product);
     final int totalStock = _getTotalStock(product);
     final String namaProduk = _safeString(product['nama_produk']);
     final int harga = _safeInt(product['harga']);
+
+    // ⭐ Ambil data varian dari ukuran_stok
+    final List<dynamic> ukuranStok = _safeList(product['ukuran_stok']);
+
+    // ⭐ Ambil daftar warna unik untuk badge
+    List<String> warnaList = [];
+    for (var item in ukuranStok) {
+      String warna = item['warna'] ?? '';
+      if (warna.isNotEmpty && !warnaList.contains(warna)) {
+        warnaList.add(warna);
+      }
+    }
+
+    // ⭐ Tampilkan maksimal 3 varian, sisanya "+N varian"
+    List<Map<String, dynamic>> displayVarian = [];
+    String? moreVarianText;
+    if (ukuranStok.length > 3) {
+      displayVarian = ukuranStok.take(3).map((e) => Map<String, dynamic>.from(e)).toList();
+      moreVarianText = '+${ukuranStok.length - 3} varian';
+    } else {
+      displayVarian = ukuranStok.map((e) => Map<String, dynamic>.from(e)).toList();
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -731,7 +767,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
         border: Border.all(color: const Color(0xFFD8A5A8), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -742,116 +778,191 @@ class _ProdukScreenState extends State<ProdukScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildProductImage(product),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    namaProduk,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Nama Produk
+                Text(
+                  namaProduk,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+
+                // Harga
+                Text(
+                  formatPrice(harga),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF803033),
+                  ),
+                ),
+                const SizedBox(height: 3),
+
+                // ⭐ BADGE WARNA (lingkaran kecil)
+                if (warnaList.isNotEmpty) ...[
+                  Row(
+                    children: warnaList.map((warna) {
+                      return Container(
+                        width: 14,
+                        height: 14,
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: _getWarnaColor(warna),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey.shade300, width: 1),
+                        ),
+                      );
+                    }).toList(),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    formatPrice(harga),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF803033),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.inventory_2_outlined,
-                        size: 10,
-                        color: isLowStock
-                            ? Colors.orange
-                            : Colors.grey.shade500,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        'Stok: $totalStock',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: isLowStock
-                              ? Colors.orange
-                              : Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (isLowStock) ...[
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF3E0),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Stok rendah',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 7,
-                              color: const Color(0xFFFFB74D),
-                              fontWeight: FontWeight.w600,
+                ],
+
+                // ⭐ DAFTAR VARIAN (UKURAN + WARNA + STOK)
+                if (displayVarian.isNotEmpty) ...[
+                  ...displayVarian.map((item) {
+                    String size = item['size'] ?? '';
+                    String warna = item['warna'] ?? '';
+                    int stock = _safeInt(item['stock']);
+                    Color warnaColor = _getWarnaColor(warna);
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 1),
+                      child: Row(
+                        children: [
+                          // Lingkaran warna kecil
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: warnaColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.grey.shade300, width: 0.5),
                             ),
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      GestureDetector(
-                        onTap: () => _editProduct(product),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5ECEA),
-                            borderRadius: BorderRadius.circular(8),
+                          const SizedBox(width: 4),
+                          // Ukuran + Stok
+                          Text(
+                            '$size : $stock',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.edit_outlined,
-                            color: Color(0xFF803033),
-                            size: 14,
-                          ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: () => _deleteProduct(product),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5ECEA),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.red,
-                            size: 14,
-                          ),
-                        ),
-                      ),
-                    ],
+                    );
+                  }).toList(),
+                ],
+
+                // ⭐ "+N varian" jika ada lebih dari 3
+                if (moreVarianText != null) ...[
+                  Text(
+                    moreVarianText,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      color: const Color(0xFF803033),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
-              ),
+
+                const SizedBox(height: 4),
+
+                // Stok + Status
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 10,
+                      color: isLowStock ? Colors.orange : Colors.grey.shade500,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      'Stok: $totalStock',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        color: isLowStock
+                            ? Colors.orange
+                            : Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (isLowStock) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Stok rendah',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 7,
+                            color: const Color(0xFFFFB74D),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 6),
+
+                // Tombol Edit & Delete
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: () => _editProduct(product),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5ECEA),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.edit_outlined,
+                          color: Color(0xFF803033),
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () => _deleteProduct(product),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5ECEA),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -883,7 +994,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
           children: [
             Icon(
               icon,
-              color: const Color(0xFF803033).withOpacity(opacity),
+              color: const Color(0xFF803033).withValues(alpha: opacity),
               size: 18,
             ),
             const SizedBox(width: 4),
@@ -892,7 +1003,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: const Color(0xFF803033).withOpacity(opacity),
+                color: const Color(0xFF803033).withValues(alpha: opacity),
               ),
             ),
           ],
@@ -911,7 +1022,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
         border: Border.all(color: Colors.white, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -978,12 +1089,20 @@ class _ProdukScreenState extends State<ProdukScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                        icon: const Icon(Icons.menu, color: Colors.white, size: 24),
+                        onPressed: () =>
+                            _scaffoldKey.currentState?.openDrawer(),
+                        icon: const Icon(
+                          Icons.menu,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -991,10 +1110,13 @@ class _ProdukScreenState extends State<ProdukScreen> {
                       Badge(
                         label: Text(
                           '$_belumDibaca',
-                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
                         ),
                         backgroundColor: const Color(0xFF803033),
-                        isLabelVisible: _belumDibaca > 0, 
+                        isLabelVisible: _belumDibaca > 0,
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -1013,14 +1135,14 @@ class _ProdukScreenState extends State<ProdukScreen> {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
                               Icons.notifications_none,
-                              color: Color(0xFF803033), 
+                              color: Color(0xFF803033),
                               size: 20,
-                        ),
+                            ),
                           ),
                         ),
                       ),
@@ -1056,7 +1178,10 @@ class _ProdukScreenState extends State<ProdukScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFFFFF),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFF803033), width: 1),
+                                border: Border.all(
+                                  color: const Color(0xFF803033),
+                                  width: 1,
+                                ),
                               ),
                               child: TextField(
                                 controller: _searchController,
@@ -1089,7 +1214,12 @@ class _ProdukScreenState extends State<ProdukScreen> {
                                     borderSide: BorderSide.none,
                                   ),
                                   filled: true,
-                                  fillColor: const Color.fromARGB(255, 255, 255, 255),
+                                  fillColor: const Color.fromARGB(
+                                    255,
+                                    255,
+                                    255,
+                                    255,
+                                  ),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 14,
@@ -1099,7 +1229,6 @@ class _ProdukScreenState extends State<ProdukScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Tombol Filter Kategori
                           GestureDetector(
                             onTap: _showFilterDialog,
                             child: Container(
@@ -1108,7 +1237,10 @@ class _ProdukScreenState extends State<ProdukScreen> {
                               decoration: BoxDecoration(
                                 color: const Color.fromARGB(255, 255, 255, 255),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFF803033), width: 1),
+                                border: Border.all(
+                                  color: const Color(0xFF803033),
+                                  width: 1,
+                                ),
                               ),
                               child: Icon(
                                 Icons.filter_list,
@@ -1118,7 +1250,6 @@ class _ProdukScreenState extends State<ProdukScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Tombol Filter Status
                           GestureDetector(
                             onTap: _showStatusFilterDialog,
                             child: Container(
@@ -1127,7 +1258,10 @@ class _ProdukScreenState extends State<ProdukScreen> {
                               decoration: BoxDecoration(
                                 color: const Color.fromARGB(255, 255, 255, 255),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFF803033), width: 1),
+                                border: Border.all(
+                                  color: const Color(0xFF803033),
+                                  width: 1,
+                                ),
                               ),
                               child: Icon(
                                 Icons.warning_amber_rounded,
@@ -1152,58 +1286,59 @@ class _ProdukScreenState extends State<ProdukScreen> {
                           ),
                         )
                       : _filteredProducts.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 48,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Tidak ada produk',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ],
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: 48,
+                                color: Colors.grey.shade400,
                               ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _fetchProducts,
-                              color: const Color(0xFF803033),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  int crossAxisCount = 2;
-                                  if (constraints.maxWidth > 800) {
-                                    crossAxisCount = 3;
-                                  }
-                                  if (constraints.maxWidth > 1100) {
-                                    crossAxisCount = 4;
-                                  }
-                                  return GridView.builder(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              const SizedBox(height: 12),
+                              Text(
+                                'Tidak ada produk',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _fetchProducts,
+                          color: const Color(0xFF803033),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              int crossAxisCount = 2;
+                              if (constraints.maxWidth > 800) {
+                                crossAxisCount = 3;
+                              }
+                              if (constraints.maxWidth > 1100) {
+                                crossAxisCount = 4;
+                              }
+                              return GridView.builder(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
                                       crossAxisCount: crossAxisCount,
                                       crossAxisSpacing: 12,
                                       mainAxisSpacing: 12,
-                                      childAspectRatio: 0.65,
+                                      childAspectRatio: 0.64, 
                                     ),
-                                    itemCount: _filteredProducts.length,
-                                    itemBuilder: (context, index) {
-                                      final product = _filteredProducts[index];
-                                      return _buildProductCard(product);
-                                    },
-                                  );
+                                itemCount: _filteredProducts.length,
+                                itemBuilder: (context, index) {
+                                  final product = _filteredProducts[index];
+                                  return _buildProductCard(product);
                                 },
-                              ),
-                            ),
+                              );
+                            },
+                          ),
+                        ),
                 ),
               ],
             ),
