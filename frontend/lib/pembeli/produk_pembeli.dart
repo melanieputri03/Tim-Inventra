@@ -1,12 +1,12 @@
-// lib/pembeli/produk_pembeli.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../api/api_base_url.dart';
-import '../auth/login_screen.dart';
+import '../services/wishlist_service.dart';
 import 'detail_produk.dart';
-import 'rekomendasi_produk.dart';
+import '../widgets/pembeli_top_bar.dart';
+import '../widgets/pembeli_bottom_navbar.dart';
 
 const kBgColor = Color(0xFFF5ECEA);
 const kPrimaryColor = Color(0xFF803033);
@@ -20,8 +20,6 @@ class ProdukPembeli extends StatefulWidget {
 
 class _ProdukPembeliState extends State<ProdukPembeli> {
   final _searchController = TextEditingController();
-
-  // Data API
   List<Map<String, dynamic>> _allProduk = [];
   List<Map<String, dynamic>> _filteredProduk = [];
   List<Map<String, dynamic>> _kategoriList = [];
@@ -43,7 +41,6 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
     super.dispose();
   }
 
-  //  Fetch data 
   Future<void> _fetchKategori() async {
     try {
       final res = await http.get(
@@ -53,9 +50,9 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == true) {
-          setState(() {
-            _kategoriList = List<Map<String, dynamic>>.from(data['data']);
-          });
+          setState(
+            () => _kategoriList = List<Map<String, dynamic>>.from(data['data']),
+          );
         }
       }
     } catch (_) {}
@@ -66,7 +63,6 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
       _isLoading = true;
       _errorMsg = null;
     });
-
     try {
       final uri = Uri.parse(ApiBaseUrl.produkPublik).replace(
         queryParameters: {
@@ -74,9 +70,7 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
           if (_selectedKategori != 'Semua') ..._getKategoriIdParam(),
         },
       );
-
       final res = await http.get(uri, headers: {'Accept': 'application/json'});
-
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == true) {
@@ -85,17 +79,7 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
             _filteredProduk = _allProduk;
             _isLoading = false;
           });
-        } else {
-          setState(() {
-            _isLoading = false;
-            _errorMsg = 'Gagal memuat produk';
-          });
         }
-      } else {
-        setState(() {
-          _isLoading = false;
-          _errorMsg = 'Server error (${res.statusCode})';
-        });
       }
     } catch (e) {
       setState(() {
@@ -121,95 +105,32 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
       _filteredProduk = _allProduk.where((p) {
         final nama = ApiBaseUrl.safeString(p['nama_produk']).toLowerCase();
         final kat = ApiBaseUrl.safeString(p['kategori']).toLowerCase();
-
-        final matchSearch = _searchQuery.isEmpty ||
-            nama.contains(_searchQuery.toLowerCase());
-        final matchKat = _selectedKategori == 'Semua' ||
+        final matchSearch =
+            _searchQuery.isEmpty || nama.contains(_searchQuery.toLowerCase());
+        final matchKat =
+            _selectedKategori == 'Semua' ||
             kat == _selectedKategori.toLowerCase();
-
         return matchSearch && matchKat;
       }).toList();
     });
   }
 
-  // Helpers
-  String _rupiah(int v) {
-    final s = v.toString();
-    return 'Rp ${s.replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    )}';
-  }
+  String _rupiah(int v) =>
+      'Rp ${v.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
 
-  List<String> get _kategoriTabs {
-    final names = _kategoriList.map((k) => k['nama_kategori'].toString()).toList();
-    return ['Semua', ...names];
-  }
+  List<String> get _kategoriTabs => [
+    'Semua',
+    ..._kategoriList.map((k) => k['nama_kategori'].toString()).toList(),
+  ];
 
-  // Build
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBgColor,
       body: Column(
         children: [
-          // Header
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ani Butik Syar\'i',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: kPrimaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Busana Muslim Pilihan',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          color: Colors.brown.shade400,
-                        ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    ),
-                    child: Container(
-                      width: 33,  // Lebar tetap
-                      height: 33, 
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.person_outline,
-                          color: kPrimaryColor, size: 24),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          const SafeArea(child: PembeliTopBar()),
 
-          // Search + Filter
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
@@ -241,17 +162,20 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
                           color: Colors.grey.shade400,
                           fontSize: 13,
                         ),
-                        prefixIcon: Icon(Icons.search,
-                            color: Colors.grey.shade400, size: 20),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Colors.grey.shade400,
+                          size: 20,
+                        ),
                         border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 13),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 13,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Refresh button
                 GestureDetector(
                   onTap: _fetchProduk,
                   child: Container(
@@ -268,15 +192,17 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.refresh,
-                        color: kPrimaryColor, size: 20),
+                    child: const Icon(
+                      Icons.refresh,
+                      color: kPrimaryColor,
+                      size: 20,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Kategori chips
           if (_kategoriTabs.length > 1)
             SizedBox(
               height: 42,
@@ -294,32 +220,32 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
                     },
                     child: Container(
                       margin: const EdgeInsets.only(right: 10),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 0,
+                      ),
                       height: 40,
                       decoration: BoxDecoration(
                         color: selected ? kPrimaryColor : Colors.white,
-                        borderRadius: BorderRadius.circular(20), // Pill shape yang rapi
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: selected ? kPrimaryColor : Colors.grey.shade300,
+                          color: selected
+                              ? kPrimaryColor
+                              : Colors.grey.shade300,
                           width: 1,
                         ),
-                        boxShadow: selected
-                            ? [
-                                BoxShadow(
-                                  color: kPrimaryColor.withOpacity(0.15),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                )
-                            ]
-                            : null,
                       ),
                       child: Center(
                         child: Text(
                           kat,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
-                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                            color: selected ? Colors.white : Colors.grey.shade700,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: selected
+                                ? Colors.white
+                                : Colors.grey.shade700,
                           ),
                         ),
                       ),
@@ -331,171 +257,98 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
 
           const SizedBox(height: 12),
 
-          // Grid produk
           Expanded(
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(color: kPrimaryColor),
                   )
-                : _errorMsg != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.wifi_off,
-                                size: 48, color: Colors.grey.shade300),
-                            const SizedBox(height: 12),
-                            Text(
-                              _errorMsg!,
-                              style: GoogleFonts.plusJakartaSans(
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _fetchProduk,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: kPrimaryColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: Text(
-                                'Coba Lagi',
-                                style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _filteredProduk.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.search_off,
-                                    size: 48, color: Colors.grey.shade300),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Produk tidak ditemukan',
-                                  style: GoogleFonts.plusJakartaSans(
-                                      color: Colors.grey.shade400),
-                                ),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            color: kPrimaryColor,
-                            onRefresh: _fetchProduk,
-                            child: GridView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 0.72,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                              ),
-                              itemCount: _filteredProduk.length,
-                              itemBuilder: (ctx, i) => _ProdukCard(
-                                produk: _filteredProduk[i],
-                                rupiah: _rupiah,
-                              ),
-                            ),
+                : _filteredProduk.isEmpty
+                ? Center(
+                    child: Text(
+                      'Produk tidak ditemukan',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  )
+                : RefreshIndicator(
+                    color: kPrimaryColor,
+                    onRefresh: _fetchProduk,
+                    child: GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.72,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
                           ),
-          ),
-
-          // Bottom Navigation
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildNavItem(
-                  icon: Icons.shopping_bag_outlined,
-                  label: 'Produk',
-                  isSelected: true,
-                ),
-                _buildNavItem(
-                  icon: Icons.favorite_outline,
-                  label: 'Rekomendasi',
-                  isSelected: false,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const RekomendasiProduk()),
+                      itemCount: _filteredProduk.length,
+                      itemBuilder: (ctx, i) => _ProdukCard(
+                        produk: _filteredProduk[i],
+                        rupiah: _rupiah,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
           ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap ?? () {},
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? kPrimaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                color: isSelected ? Colors.white : Colors.grey.shade400,
-                size: 18),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? Colors.white : Colors.grey.shade400,
-              ),
-            ),
-          ],
-        ),
+          // PANGGIL BOTTOM NAVBAR
+          const PembeliBottomNavbar(selectedIndex: 0),
+        ],
       ),
     );
   }
 }
 
-// Kartu Produk
-class _ProdukCard extends StatelessWidget {
+class _ProdukCard extends StatefulWidget {
   final Map<String, dynamic> produk;
   final String Function(int) rupiah;
-
   const _ProdukCard({required this.produk, required this.rupiah});
+  @override
+  State<_ProdukCard> createState() => _ProdukCardState();
+}
+
+class _ProdukCardState extends State<_ProdukCard> {
+  bool _isFav = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkWishlist();
+  }
+
+  Future<void> _checkWishlist() async {
+    final isFav = await WishlistService.isWishlisted(
+      widget.produk['produk_id'],
+    );
+    if (mounted) setState(() => _isFav = isFav);
+  }
+
+  Future<void> _toggleWishlist() async {
+    final isAdded = await WishlistService.toggleWishlist(
+      widget.produk['produk_id'],
+    );
+    if (mounted) {
+      setState(() => _isFav = isAdded);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isAdded ? 'Ditambahkan ke Favorit' : 'Dihapus dari Favorit',
+          ),
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final gambarUrl =
-        ApiBaseUrl.getImageUrl(ApiBaseUrl.safeString(produk['gambar']));
+    final produk = widget.produk;
+    final gambarUrl = ApiBaseUrl.getImageUrl(
+      ApiBaseUrl.safeString(produk['gambar']),
+    );
     final stok = ApiBaseUrl.safeInt(produk['stok']);
     final minStok = ApiBaseUrl.safeInt(produk['min_stok'], defaultValue: 10);
     final isLowStock = stok > 0 && stok <= minStok;
@@ -520,31 +373,49 @@ class _ProdukCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              child: gambarUrl.isNotEmpty
-                  ? Image.network(
-                      gambarUrl,
-                      width: double.infinity,
-                      height: 130,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholder(),
-                      loadingBuilder: (_, child, progress) => progress == null
-                          ? child
-                          : Container(
-                              height: 130,
-                              color: const Color(0xFFF5ECEA),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                    color: kPrimaryColor, strokeWidth: 2),
-                              ),
-                            ),
-                    )
-                  : _placeholder(),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                  child: gambarUrl.isNotEmpty
+                      ? Image.network(
+                          gambarUrl,
+                          width: double.infinity,
+                          height: 130,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _placeholder(),
+                        )
+                      : _placeholder(),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: _toggleWishlist,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        _isFav ? Icons.favorite : Icons.favorite_border,
+                        color: _isFav ? Colors.red : Colors.grey.shade400,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
@@ -555,9 +426,10 @@ class _ProdukCard extends StatelessWidget {
                     Text(
                       ApiBaseUrl.safeString(produk['nama_produk']),
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -565,11 +437,12 @@ class _ProdukCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          rupiah(ApiBaseUrl.safeInt(produk['harga'])),
+                          widget.rupiah(ApiBaseUrl.safeInt(produk['harga'])),
                           style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: kPrimaryColor),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: kPrimaryColor,
+                          ),
                         ),
                         if (stok == 0)
                           _badge('Habis', Colors.red)
@@ -588,23 +461,25 @@ class _ProdukCard extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        height: 130,
-        width: double.infinity,
-        color: const Color(0xFFF5ECEA),
-        child: const Icon(Icons.checkroom, color: kPrimaryColor, size: 50),
-      );
-
+    height: 130,
+    width: double.infinity,
+    color: const Color(0xFFF5ECEA),
+    child: const Icon(Icons.checkroom, color: kPrimaryColor, size: 50),
+  );
   Widget _badge(String text, Color color) => Container(
-        margin: const EdgeInsets.only(top: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          text,
-          style: GoogleFonts.plusJakartaSans(
-              fontSize: 8, color: color, fontWeight: FontWeight.w600),
-        ),
-      );
+    margin: const EdgeInsets.only(top: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Text(
+      text,
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 8,
+        color: color,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }

@@ -8,11 +8,14 @@ import '../penjual/riwayat_transaksi_screen.dart';
 import '../penjual/beranda_screen.dart';
 import '../penjual/manajemen_periode_screen.dart';
 import '../penjual/laporan_penjualan.dart';
-import '../penjual/notifikasi_penjual.dart';      
-import '../penjual/rekomendasi_stok.dart';        
-import '../penjual/profil_penjual.dart';   
-import '../penjual/analisis_produk.dart';   
-import '../penjual/paket_langganan.dart';    
+import '../penjual/notifikasi_penjual.dart';
+import '../penjual/rekomendasi_stok.dart';
+import '../penjual/profil_penjual.dart';
+import '../penjual/analisis_produk.dart';
+import '../penjual/paket_langganan.dart';
+import '../penjual/kategori_screen.dart';
+import '../penjual/bundling_screen.dart';
+import '../penjual/profit_analytics_screen.dart';
 
 class SidebarWidget extends StatefulWidget {
   final String userName;
@@ -76,10 +79,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 (route) => false,
               );
             },
-            child: const Text(
-              'Keluar',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Keluar', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -90,11 +90,23 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProdukScreen(
-          userName: userName,
-          userEmail: userEmail,
-        ),
+        builder: (context) =>
+            ProdukScreen(userName: userName, userEmail: userEmail),
       ),
+    );
+  }
+
+  void _navigateToProfitAnalytics(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ProfitAnalyticsScreen()),
+    );
+  }
+
+  void _navigateToKategori(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const KategoriScreen()),
     );
   }
 
@@ -102,10 +114,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RiwayatTransaksiScreen(
-          userName: userName,
-          userEmail: userEmail,
-        ),
+        builder: (context) =>
+            RiwayatTransaksiScreen(userName: userName, userEmail: userEmail),
       ),
     );
   }
@@ -114,10 +124,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => BerandaScreen(
-          userName: userName,
-          userEmail: userEmail,
-        ),
+        builder: (context) =>
+            BerandaScreen(userName: userName, userEmail: userEmail),
       ),
     );
   }
@@ -126,10 +134,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ManajemenPeriodeScreen(
-          userName: userName,
-          userEmail: userEmail,
-        ),
+        builder: (context) =>
+            ManajemenPeriodeScreen(userName: userName, userEmail: userEmail),
       ),
     );
   }
@@ -137,18 +143,21 @@ class _SidebarWidgetState extends State<SidebarWidget> {
   void _navigateToLaporan(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const LaporanPenjualan(),
-      ),
+      MaterialPageRoute(builder: (context) => const LaporanPenjualan()),
+    );
+  }
+
+  void _navigateToBundling(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BundlingScreen()),
     );
   }
 
   void _navigateToNotifikasi(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const NotifikasiPenjual(),
-      ),
+      MaterialPageRoute(builder: (context) => const NotifikasiPenjual()),
     );
   }
 
@@ -156,20 +165,16 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AnalisisProduk(
-          userName: userName,
-          userEmail: userEmail,
-          ),
-        ),
+        builder: (context) =>
+            AnalisisProduk(userName: userName, userEmail: userEmail),
+      ),
     );
   }
 
   void _navigateToRekomendasiStok(BuildContext context) async {
     final needRefresh = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const RekomendasiStok(),
-      ),
+      MaterialPageRoute(builder: (context) => const RekomendasiStok()),
     );
 
     if (needRefresh == true) {
@@ -179,38 +184,32 @@ class _SidebarWidgetState extends State<SidebarWidget> {
 
   void _refreshProdukScreen(BuildContext context) {
     Navigator.pop(context);
-    
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => ProdukScreen(
-          userName: userName,
-          userEmail: userEmail,
-        ),
+        builder: (context) =>
+            ProdukScreen(userName: userName, userEmail: userEmail),
       ),
     );
   }
 
   void _navigateToPaketLangganan(BuildContext context) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => PaketLangganan(
-        userName: userName,
-        userEmail: userEmail,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            PaketLangganan(userName: userName, userEmail: userEmail),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _navigateToProfil(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProfilPenjual(
-          userName: userName,
-          userEmail: userEmail,
-        ),
+        builder: (context) =>
+            ProfilPenjual(userName: userName, userEmail: userEmail),
       ),
     );
   }
@@ -291,7 +290,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 ],
               ),
             ),
-            
+
             // Menu Items
             Expanded(
               child: ListView(
@@ -332,9 +331,13 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     index: 4,
                     onTap: () => _navigateToPeriode(context),
                   ),
-                  
-                  const Divider(height: 24, indent: 16, endIndent: 16), // pemisah
-                  
+
+                  const Divider(
+                    height: 24,
+                    indent: 16,
+                    endIndent: 16,
+                  ), // pemisah
+
                   _buildMenuItem(
                     context: context,
                     icon: Icons.trending_up_outlined,
@@ -342,13 +345,21 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     index: 5,
                     onTap: () => _navigateToRekomendasiStok(context),
                   ),
-                  
+
                   _buildMenuItem(
                     context: context,
                     icon: Icons.analytics_outlined,
                     title: 'Analisis Produk',
                     index: 6,
                     onTap: () => _navigateToAnalisisProduk(context),
+                  ),
+
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.shopping_cart_checkout_outlined,
+                    title: 'Rekomendasi Bundling',
+                    index: 11,
+                    onTap: () => _navigateToBundling(context),
                   ),
 
                   _buildMenuItem(
@@ -366,7 +377,15 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     index: 8,
                     onTap: () => _navigateToPaketLangganan(context),
                   ),
-                  
+
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.monetization_on_outlined,
+                    title: 'Profit Analytics',
+                    index: 12,
+                    onTap: () => _navigateToProfitAnalytics(context),
+                  ),
+
                   _buildMenuItem(
                     context: context,
                     icon: Icons.person_outline,
@@ -374,9 +393,17 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     index: 9,
                     onTap: () => _navigateToProfil(context),
                   ),
-                  
+
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.category_outlined,
+                    title: 'Kategori Produk',
+                    index: 10,
+                    onTap: () => _navigateToKategori(context),
+                  ),
+
                   const SizedBox(height: 20),
-                  
+
                   _buildLogoutButton(context),
                 ],
               ),
@@ -441,16 +468,10 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
-              const Icon(
-                Icons.logout,
-                color: Color(0xFF803033),
-                size: 22,
-              ),
+              const Icon(Icons.logout, color: Color(0xFF803033), size: 22),
               const SizedBox(width: 16),
               Text(
                 'Keluar',

@@ -8,6 +8,39 @@ use App\Http\Controllers\Api\PeriodeController;
 use App\Http\Controllers\Api\RekomendasiStokController;
 use App\Http\Controllers\Api\LaporanController;
 use App\Http\Controllers\Api\NotifikasiController;
+use App\Http\Controllers\Api\KategoriController;
+use App\Http\Controllers\Api\BundlingController;
+use App\Http\Controllers\Api\ProfitController;
+use App\Models\Penjual;
+
+// Endpoint About Market (Tanpa Auth / Publik)
+Route::get('/toko-profil', function () {
+    // Mengambil toko pertama (karena diasumsikan 1 aplikasi untuk 1 butik)
+    $toko = Penjual::select('nama_toko', 'no_telepon', 'nama')->first();
+    
+    if (!$toko) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Data toko belum tersedia.'
+        ], 404);
+    }
+
+    // Bersihkan format nomor HP (jika ada spasi atau strip)
+    $noTelepon = preg_replace('/[^0-9]/', '', $toko->no_telepon);
+    // Ubah awalan 0 menjadi 62 (format WhatsApp)
+    if (substr($noTelepon, 0, 1) === '0') {
+        $noTelepon = '62' . substr($noTelepon, 1);
+    }
+
+    return response()->json([
+        'success' => true, 
+        'data' => [
+            'nama_toko' => $toko->nama_toko ?? 'Butik Syar\'i Ani',
+            'nama_pemilik' => $toko->nama ?? 'Admin',
+            'no_telepon' => $noTelepon
+        ]
+    ]);
+});
 
 // Auth
 Route::post('/login', [LoginController::class, 'login']);
@@ -57,4 +90,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/fast-moving-sku', [LaporanController::class, 'getFastMovingSku']);
         Route::get('/dead-stock', [LaporanController::class, 'getDeadStock']);
     });
+
+    Route::get('/kategori', [KategoriController::class, 'index']);
+        Route::post('/kategori', [KategoriController::class, 'store']);
+        Route::put('/kategori/{id}', [KategoriController::class, 'update']);
+        Route::delete('/kategori/{id}', [KategoriController::class, 'destroy']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/profit-analytics', [ProfitController::class, 'getAnalytics']);
+    Route::get('/bundling-rekomendasi', [BundlingController::class, 'getRekomendasi']);
+});
 });

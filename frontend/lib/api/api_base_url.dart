@@ -39,6 +39,7 @@ class ApiBaseUrl {
 
   // Kategori
   static String get kategori => '$baseUrl/kategori';
+  static String kategoriById(int id) => '$baseUrl/kategori/$id';
 
   // Notifikasi
   static String get notifikasi => '$baseUrl/notifikasi';
@@ -73,6 +74,10 @@ class ApiBaseUrl {
   // Fast Moving SKU dan Dead Stock
   static String get laporanFastMovingSku => '$baseUrl/laporan/fast-moving-sku';
   static String get laporanDeadStock => '$baseUrl/laporan/dead-stock';
+
+  static String get bundlingRekomendasi => '$baseUrl/bundling-rekomendasi';
+  static String get profitAnalytics => '$baseUrl/profit-analytics';
+  static String get tokoProfil => '$baseUrl/toko-profil';
 
   // Gambar produk
   static String getImageUrl(dynamic path) {
