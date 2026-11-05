@@ -170,32 +170,48 @@ class LaporanController extends Controller
         $startDate = $this->getStartDate($periode, $date);
         $endDate = $this->getEndDate($periode, $date);
 
-        // 1. Ambil semua produk penjual
+        // Ambil semua produk penjual
         $allProduk = Produk::where('penjual_id', $user->penjual_id)
             ->with('kategori', 'gambarProduk')
             ->get();
 
-        // 2. Ambil ID produk yang terjual dalam periode
+        // Ambil ID produk yang terjual dalam periode
         $terjualIds = DetailTransaksi::query()
             ->join('transaksi', 'detail_transaksi.transaksi_id', '=', 'transaksi.transaksi_id')
             ->where('transaksi.penjual_id', $user->penjual_id)
             ->where('transaksi.status', 'selesai')
             ->whereBetween('transaksi.tanggal_transaksi', [$startDate, $endDate])
-            ->distinct('produk_id')
-            ->pluck('produk_id')
+            ->distinct()
+            ->pluck('detail_transaksi.produk_id')
             ->toArray();
 
-        // 3. Filter: produk yang TIDAK terjual
+        // Tanggal penjualan terakhir per produk (dari tabel transaksi)
+        $lastSales = DetailTransaksi::query()
+            ->join('transaksi', 'detail_transaksi.transaksi_id', '=', 'transaksi.transaksi_id')
+            ->where('transaksi.penjual_id', $user->penjual_id)
+            ->where('transaksi.status', 'selesai')
+            ->groupBy('detail_transaksi.produk_id')
+            ->selectRaw('detail_transaksi.produk_id as produk_id, MAX(transaksi.tanggal_transaksi) as terakhir')
+            ->pluck('terakhir', 'produk_id');
+
+        // Filter: produk yang TIDAK terjual dan masih punya stok
         $deadStock = $allProduk->filter(function ($produk) use ($terjualIds) {
-            return !in_array($produk->produk_id, $terjualIds);
+            if (in_array($produk->produk_id, $terjualIds)) {
+                return false;
+            }
+            $ukuranStok = $this->parseUkuranStok($produk->ukuran_stok);
+            return $this->getTotalStok($ukuranStok, $produk->stok) > 0;
         });
 
-        // 4. Format data
-        $data = $deadStock->map(function ($produk) {
+        // Format data
+        $data = $deadStock->map(function ($produk) use ($lastSales) {
             $ukuranStok = $this->parseUkuranStok($produk->ukuran_stok);
             $totalStok = $this->getTotalStok($ukuranStok, $produk->stok);
-            $daysSinceLastSale = $produk->updated_at
-                ? (int) Carbon::parse($produk->updated_at)->diffInDays(now())
+
+            $lastSale = $lastSales[$produk->produk_id] ?? null;
+            $basis = $lastSale ? Carbon::parse($lastSale) : $produk->created_at;
+            $daysSinceLastSale = $basis
+                ? (int) $basis->copy()->startOfDay()->diffInDays(now()->startOfDay())
                 : 999;
 
             // Rekomendasi berdasarkan durasi
@@ -220,8 +236,8 @@ class LaporanController extends Controller
                     ? $produk->gambarProduk->first()->gambar
                     : '',
                 'kategori' => $produk->kategori?->nama_kategori ?? '',
-                'terakhir_terjual' => $produk->updated_at
-                    ? $produk->updated_at->format('Y-m-d')
+                'terakhir_terjual' => $lastSale
+                    ? Carbon::parse($lastSale)->format('Y-m-d')
                     : 'Tidak pernah',
                 'hari_tanpa_penjualan' => $daysSinceLastSale,
                 'total_biaya' => $totalStok * $produk->harga,
@@ -318,7 +334,7 @@ class LaporanController extends Controller
         $date = Carbon::parse($tanggal);
         $startDate = $this->getStartDate($periode, $date);
         $endDate = $this->getEndDate($periode, $date);
-        $days = $startDate->diffInDays($endDate) + 1;
+        $days = (int) $startDate->copy()->startOfDay()->diffInDays($endDate->copy()->startOfDay()) + 1;
 
         $query = DetailTransaksi::query()
         ->join('transaksi', 'detail_transaksi.transaksi_id', '=', 'transaksi.transaksi_id')
