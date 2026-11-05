@@ -26,9 +26,25 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
 
+  Future<void> _simpanLeadTime(int hari) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('lead_time_stok', hari);
+  }
+
+  Future<void> _loadLeadTime() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!mounted) return;
+
+    setState(() {
+      _leadTime = prefs.getInt('lead_time_stok') ?? 0;
+    });
+  }
+
   int _periodeIdx = 1;
   final List<String> _periodeLabel = ['Harian\n(7 hari)', 'Mingguan\n(21 hari)', 'Bulanan\n(30 hari)'];
   final List<int> _hariCoverOptions = [7, 21, 30];
+  int _leadTime = 0;
 
   List<Map<String, dynamic>> _items = [];
   bool _isLoading = true;
@@ -46,7 +62,14 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
   void initState() { super.initState(); _init(); }
 
   // LOAD DATA 
-  Future<void> _init() async { await _loadToken(); await _loadSelectedPeriode(); _fetchRekomendasi(); }
+  Future<void> _init() async {
+    await _loadToken();
+    await _loadSelectedPeriode();
+    await _loadLeadTime();
+
+    if (!mounted) return;
+    await _fetchRekomendasi();
+  }
 
   Future<void> _loadToken() async => _token = (await SharedPreferences.getInstance()).getString('token');
 
@@ -79,7 +102,10 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
     setState(() => _isLoading = true);
     try {
       final int hariCover = _hariCoverOptions[_periodeIdx];
-      String url = '${ApiBaseUrl.rekomendasiStok}?hari_cover=$hariCover';
+      String url =
+          '${ApiBaseUrl.rekomendasiStok}'
+          '?hari_cover=$hariCover'
+          '&lead_time=$_leadTime';
       if (_selectedPeriodeId != null && _selectedPeriodeId!.isNotEmpty) {
         url += '&periode_id=$_selectedPeriodeId';
       }
@@ -230,35 +256,11 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
       rekomendasiPerUkuran = List<Map<String, dynamic>>.from(rawRekomendasi);
     }
 
-    if (rekomendasiPerUkuran.isEmpty) {
-      final ukuranStok = item['ukuran_stok'];
-      List<Map<String, dynamic>> ukuranList = [];
-      if (ukuranStok != null) {
-        if (ukuranStok is List) {
-          ukuranList = List<Map<String, dynamic>>.from(ukuranStok);
-        } else if (ukuranStok is String && ukuranStok.isNotEmpty) {
-          try { final decoded = json.decode(ukuranStok); if (decoded is List) ukuranList = List<Map<String, dynamic>>.from(decoded); } catch (_) {}
-        }
-      }
-      final rataGlobal = totalTerjual / hariCover;
-      for (var uk in ukuranList) {
-        final size = uk['size'].toString();
-        final stokUkuran = (uk['stock'] as int?) ?? 0;
-        final terjualUkuran = ukuranList.length > 1 ? (rataGlobal * sisaHari / ukuranList.length).round() : (rataGlobal * sisaHari).round();
-        final kebutuhan = terjualUkuran.round();
-        final rekomendasi = (kebutuhan * multiplier).round();
-        final saranTambah = rekomendasi - stokUkuran;
-        rekomendasiPerUkuran.add({
-          'size': size,
-          'stok_saat_ini': stokUkuran,
-          'terjual': terjualUkuran,
-          'rata_hari': terjualUkuran / hariCover,
-          'kebutuhan': kebutuhan < 0 ? 0 : kebutuhan,
-          'rekomendasi': rekomendasi < 0 ? 0 : rekomendasi,
-          'saran_tambah': saranTambah < 0 ? 0 : saranTambah,
-        });
-      }
-    }
+    final int totalKebutuhan = rekomendasiPerUkuran.fold<int>(
+      0,
+      (total, uk) =>
+          total + ((uk['kebutuhan'] as num?)?.toInt() ?? 0),
+    );
 
     Map<String, TextEditingController> ukuranControllers = {};
     Map<String, int> ukuranJumlah = {};
@@ -312,7 +314,15 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                         const Divider(height: 16),
                         _buildInfoRow('Total terjual $hariCover hr', '$totalTerjual pcs'),
                         _buildInfoRow('Rata² per hari', '${rataHari.toStringAsFixed(2)} pcs/hari'),
-                        _buildInfoRow('Kebutuhan total', '${(rataHari * hariCover).round()} pcs'),
+                        _buildInfoRow(
+                          'Lead time',
+                          '${(item['lead_time'] as num?)?.toInt() ?? 0} hari',
+                        ),
+
+                        _buildInfoRow(
+                          'Kebutuhan total',
+                          '$totalKebutuhan pcs',
+                        ),
                         _buildInfoRow('Rekomendasi total', '$rekomendasiTotal pcs'),
                         const Divider(height: 16),
                         _buildInfoRow('Saran tambah total (default)', '+$saranTambahTotal pcs', highlight: true),
@@ -336,6 +346,11 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                         final kebutuhan = (uk['kebutuhan'] as int?) ?? 0;
                         final rekomendasiSize = (uk['rekomendasi'] as int?) ?? 0;
                         final rataHariSize = (uk['rata_hari'] as num?)?.toDouble() ?? 0;
+                        final stokSedangDipesan =
+                            (uk['stok_sedang_dipesan'] as num?)?.toInt() ?? 0;
+
+                        final leadTime =
+                            (item['lead_time'] as num?)?.toInt() ?? _leadTime;
                         final isExpanded = _expandedSizes.contains(size);
                         return Container(margin: const EdgeInsets.only(bottom: 10),
                           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
@@ -398,8 +413,14 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                                 const SizedBox(height: 8),
                                 Text('Hari cover: $hariCover hari',
                                   style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade600)),
-                                Text('Kebutuhan = ${rataHariSize.toStringAsFixed(2)} × $hariCover = $kebutuhan pcs',
-                                  style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade600)),
+                                Text(
+                                  'Kebutuhan = ${rataHariSize.toStringAsFixed(2)} '
+                                  '× ($hariCover + $leadTime) = $kebutuhan pcs',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 Text('Multiplier: $multiplier ×',
                                   style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade600)),
@@ -409,8 +430,26 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                                 Text('Stok saat ini: $stokSaatIni pcs',
                                   style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade600)),
                                 const Divider(height: 8),
-                                Text('Saran tambah = $rekomendasiSize - $stokSaatIni = +$saranTambah pcs',
-                                  style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: _kPrimary6)),
+                                Text(
+                                  'Stok sedang dipesan: $stokSedangDipesan pcs',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 4),
+
+                                Text(
+                                  'Saran tambah = max(0, $rekomendasiSize - '
+                                  '$stokSaatIni - $stokSedangDipesan) '
+                                  '= +$saranTambah pcs',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _kPrimary6,
+                                  ),
+                                ),
                               ]),
                             ),
                           ]),
@@ -463,19 +502,28 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                             final jumlah = ukuranJumlah[size] ?? 0;
                             if (jumlah > 0) finalPerUkuran[size] = jumlah;
                           }
-                          setState(() {
-                            item['status'] = 'sudah_dipesan';
-                            item['jumlah_dipesan'] = totalJumlah;
-                            if (finalPerUkuran.isNotEmpty) item['jumlah_per_ukuran'] = finalPerUkuran;
-                          });
                           try {
                             final response = await http.post(
                               Uri.parse(ApiBaseUrl.restock),
                               headers: {'Authorization': 'Bearer $_token', 'Content-Type': 'application/json'},
                               body: json.encode({'produk_id': produkId, 'jumlah': totalJumlah, 'jumlah_per_ukuran': finalPerUkuran}),
                             );
-                            if (response.statusCode == 200) { _snack('Restock ${item['nama']} ($totalJumlah pcs) berhasil dicatat'); _fetchRekomendasi(); }
-                            else _snack('Gagal mencatat restok');
+                              if (!mounted) return;
+
+                              if (response.statusCode == 200) {
+                                final data = json.decode(response.body);
+
+                                if (data['success'] == true) {
+                                  _snack(
+                                    'Restock ${item['nama']} ($totalJumlah pcs) berhasil dicatat',
+                                  );
+                                  await _fetchRekomendasi();
+                                } else {
+                                  _snack(data['message'] ?? 'Gagal mencatat restok');
+                                }
+                              } else {
+                                _snack('Gagal mencatat restok (${response.statusCode})');
+                              }
                           } catch (e) { _snack('Error: ${e.toString()}'); }
                         },
                         style: ElevatedButton.styleFrom(
@@ -601,10 +649,14 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                   print('📡 Response body: ${response.body}');
                   if (response.statusCode == 200) {
                     final data = json.decode(response.body);
-                    if (data['success'] == true) {
-                      _snack('Stok ${item['nama']} bertambah $jumlahDipesan pcs!');
+                   if (data['success'] == true) {
+                      if (!mounted) return;
+
+                      _snack(
+                        'Stok ${item['nama']} bertambah $jumlahDipesan pcs!',
+                      );
+
                       await _fetchRekomendasi();
-                      Navigator.pop(context, true);
                     } else { _snack(data['message'] ?? 'Gagal mengupdate stok'); setState(() => _isLoading = false); }
                   } else { _snack('Gagal mengupdate stok (${response.statusCode})'); setState(() => _isLoading = false); }
                 } catch (e) { print('Error konfirmasi tiba: $e'); _snack('Error: ${e.toString()}'); setState(() => _isLoading = false); }
@@ -815,6 +867,75 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                                 ),
                               );
                             }),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        // INPUT LEAD TIME
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.local_shipping_outlined,
+                                color: _kPrimary6,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Waktu Tunggu Pemasok',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Perkiraan hari sampai barang tiba',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () async {
+                                  if (_leadTime > 0) {
+                                    setState(() => _leadTime--);
+                                    await _simpanLeadTime(_leadTime);
+                                    await _fetchRekomendasi();
+                                  }
+                                },
+                                icon: const Icon(Icons.remove_circle_outline),
+                                color: _kPrimary6,
+                              ),
+                              Text(
+                                '$_leadTime hari',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () async {
+                                  if (_leadTime < 365) {
+                                    setState(() => _leadTime++);
+                                    await _simpanLeadTime(_leadTime);
+                                    await _fetchRekomendasi();
+                                  }
+                                },
+                                icon: const Icon(Icons.add_circle_outline),
+                                color: _kPrimary6,
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 14),
